@@ -1,0 +1,16 @@
+{
+	"name": "effect-course",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "bun run src/index.ts"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.2.22",
+		"typescript": "^5.9.2"
+	},
+	"dependencies": {
+		"effect": "^3.17.14"
+	}
+}
