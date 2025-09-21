@@ -23,7 +23,6 @@ class PokeApiUrl extends Context.Tag("PokeApiUrl")<PokeApiUrl, string>() {
 		Effect.gen(function* () {
 			const baseUrl = yield* Config.string("BASE_URL");
 
-			// NB: note there is no need for `PokeApiUrl.of` as it is inferred from `Layer`
 			return `${baseUrl}/pokemon`;
 		}),
 	);
@@ -38,42 +37,58 @@ class BuildPokeApiUrl extends Context.Tag("BuildPokeApiUrl")<
 		Effect.gen(function* () {
 			const pokeApiUrl = yield* PokeApiUrl;
 
-			// NB: note there is no need for `BuildPokeApiUrl.of` as it is inferred from `Layer`
 			return ({ name }) => `${pokeApiUrl}/${name}`;
 		}),
-		// !NB: `BuildPokeApiUrl` has a dependency on `PokeApiUrl` as well, so we need to provide it directly here
-		// We use `Layer.provide` when composing layers, and `Effect.provide` when providing the final layer to run effects
-		// This `pipe` could also be applied at the `MainLayer` level on the service, but it is good practice to directly provide the required dependencies when defining a `Layer`
 	).pipe(Layer.provide(PokeApiUrl.Live));
 }
 
-const make = {
-	getPokemon: Effect.gen(function* () {
-		const pokemonCollection = yield* PokemonCollection;
-		const buildPokeApiUrl = yield* BuildPokeApiUrl;
+const make = Effect.gen(function* () {
+	const pokemonCollection = yield* PokemonCollection;
+	const buildPokeApiUrl = yield* BuildPokeApiUrl;
 
-		const requestUrl = buildPokeApiUrl({ name: pokemonCollection[0] });
+	return {
+		getPokemon: Effect.gen(function* () {
+			const requestUrl = buildPokeApiUrl({ name: pokemonCollection[0] });
 
-		const response = yield* Effect.tryPromise({
-			try: () => fetch(requestUrl),
-			catch: () => new FetchError(),
-		});
+			const response = yield* Effect.tryPromise({
+				try: () => fetch(requestUrl),
+				catch: () => new FetchError(),
+			});
 
-		if (!response.ok) {
-			return yield* new FetchError();
-		}
+			if (!response.ok) {
+				return yield* new FetchError();
+			}
 
-		const json = yield* Effect.tryPromise({
-			try: () => response.json(),
-			catch: () => new JsonError(),
-		});
+			const json = yield* Effect.tryPromise({
+				try: () => response.json(),
+				catch: () => new JsonError(),
+			});
 
-		return yield* Schema.decodeUnknown(Pokemon)(json);
-	}),
-};
+			return yield* Schema.decodeUnknown(Pokemon)(json);
+		}),
+	};
+});
 
-class PokeApi extends Context.Tag("PokeApi")<PokeApi, typeof make>() {
-	static readonly Live = Layer.succeed(this, make);
+class PokeApi extends Context.Tag("PokeApi")<
+	PokeApi,
+	Effect.Effect.Success<typeof make>
+>() {
+	static readonly Live = Layer.effect(this, make).pipe(
+		Layer.provide(Layer.mergeAll(PokemonCollection.Live, BuildPokeApiUrl.Live)),
+	);
+
+	static readonly Mock = Layer.succeed(
+		this,
+		PokeApi.of({
+			getPokemon: Effect.succeed({
+				id: 1,
+				height: 10,
+				weight: 10,
+				name: "mock-name",
+				order: 1,
+			}),
+		}),
+	);
 }
 
 const program = Effect.gen(function* () {
@@ -82,12 +97,8 @@ const program = Effect.gen(function* () {
 	return yield* pokeApi.getPokemon;
 });
 
-const MainLayer = Layer.mergeAll(
-	PokeApi.Live,
-	PokemonCollection.Live,
-	BuildPokeApiUrl.Live,
-	PokeApiUrl.Live,
-);
+// With the added `Mock` parameter, swapping layers for mocking becomes as simple as replacing below with `PokeApi.Mock`
+const MainLayer = Layer.mergeAll(PokeApi.Live);
 
 const liveProgram = program.pipe(Effect.provide(MainLayer));
 
