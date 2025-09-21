@@ -1,9 +1,10 @@
-import { Config, Context, Effect, Layer, Schema } from "effect";
+import { Config, Effect, Layer, Schema } from "effect";
 
 import { FetchError, JsonError } from "./errors";
 import { Pokemon } from "./schemas";
 
 // Main goal of this step is to refactor services to provide default implementation with `Effect.Service`
+// As a side quest, converged the poke api url services
 
 class PokemonCollection extends Effect.Service<PokemonCollection>()(
 	"PokemonCollection",
@@ -13,34 +14,18 @@ class PokemonCollection extends Effect.Service<PokemonCollection>()(
 	},
 ) {}
 
-// !NB: `Effect.Service` accepts all types that can be assign to `implements` in a `class` declaration which doesnt include primitives, so must fallback to `Context.Tag` here
-class PokeApiUrl extends Context.Tag("PokeApiUrl")<PokeApiUrl, string>() {
-	static readonly Live = Layer.effect(
-		this,
-		Effect.gen(function* () {
-			const baseUrl = yield* Config.string("BASE_URL");
+class PokeApiUrl extends Effect.Service<PokeApiUrl>()("PokeApiUrl", {
+	effect: Effect.gen(function* () {
+		const baseUrl = yield* Config.string("BASE_URL");
 
-			return `${baseUrl}/pokemon`;
-		}),
-	);
-}
-
-class BuildPokeApiUrl extends Effect.Service<BuildPokeApiUrl>()(
-	"BuildPokeApiUrl",
-	{
-		effect: Effect.gen(function* () {
-			const pokeApiUrl = yield* PokeApiUrl;
-
-			return ({ name }: { name: string }) => `${pokeApiUrl}/${name}`;
-		}),
-		dependencies: [PokeApiUrl.Live],
-	},
-) {}
+		return ({ name }: { name: string }) => `${baseUrl}/pokemon/${name}`;
+	}),
+}) {}
 
 class PokeApi extends Effect.Service<PokeApi>()("PokeApi", {
 	effect: Effect.gen(function* () {
 		const pokemonCollection = yield* PokemonCollection;
-		const buildPokeApiUrl = yield* BuildPokeApiUrl;
+		const buildPokeApiUrl = yield* PokeApiUrl;
 
 		return {
 			getPokemon: Effect.gen(function* () {
@@ -64,7 +49,7 @@ class PokeApi extends Effect.Service<PokeApi>()("PokeApi", {
 			}),
 		};
 	}),
-	dependencies: [PokemonCollection.Default, BuildPokeApiUrl.Default],
+	dependencies: [PokemonCollection.Default, PokeApiUrl.Default],
 }) {}
 
 const program = Effect.gen(function* () {
