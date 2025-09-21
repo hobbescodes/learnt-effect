@@ -45,8 +45,9 @@ const program = Effect.gen(function* () {
 	return yield* pokeApi.getPokemon;
 });
 
-const main = program.pipe(
-	Effect.provideService(PokeApi, PokeApi.Live),
+const liveProgram = program.pipe(Effect.provideService(PokeApi, PokeApi.Live));
+
+const main = liveProgram.pipe(
 	Effect.catchTags({
 		FetchError: () => Effect.succeed("Fetch error"),
 		JsonError: () => Effect.succeed("Json error"),

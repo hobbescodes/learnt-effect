@@ -60,10 +60,10 @@ const program = Effect.gen(function* () {
 	return yield* pokeApi.getPokemon;
 });
 
-const main = program.pipe(
-	// !NB: providing a service allows for composability
-	// same as having `const runnable = program.pipe(Effect.provideService(PokeApi, PokeApiLive))` above and then starting `main` with `runnable.pipe(Effect.catchTags(...))`
-	Effect.provideService(PokeApi, PokeApiLive),
+// !NB: providing a service allows for composability
+const liveProgram = program.pipe(Effect.provideService(PokeApi, PokeApiLive));
+
+const main = liveProgram.pipe(
 	Effect.catchTags({
 		FetchError: () => Effect.succeed("Fetch error"),
 		JsonError: () => Effect.succeed("Json error"),
