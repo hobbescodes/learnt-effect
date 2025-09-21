@@ -1,64 +1,16 @@
-import { Config, Effect, Layer, Schema } from "effect";
+import { Effect, Layer } from "effect";
 
-import { FetchError, JsonError } from "./errors";
-import { Pokemon } from "./schemas";
+import { PokeApi } from "./services";
 
-class PokemonCollection extends Effect.Service<PokemonCollection>()(
-	"PokemonCollection",
-	{
-		succeed: ["staryu", "perrserker", "flaaffy"],
-	},
-) {}
-
-class PokeApiUrl extends Effect.Service<PokeApiUrl>()("PokeApiUrl", {
-	effect: Effect.gen(function* () {
-		const baseUrl = yield* Config.string("BASE_URL");
-
-		return ({ name }: { name: string }) => `${baseUrl}/pokemon/${name}`;
-	}),
-}) {}
-
-class PokeApi extends Effect.Service<PokeApi>()("PokeApi", {
-	effect: Effect.gen(function* () {
-		const pokemonCollection = yield* PokemonCollection;
-		const buildPokeApiUrl = yield* PokeApiUrl;
-
-		return {
-			getPokemon: Effect.gen(function* () {
-				const requestUrl = buildPokeApiUrl({ name: pokemonCollection[0] });
-
-				const response = yield* Effect.tryPromise({
-					try: () => fetch(requestUrl),
-					catch: () => new FetchError(),
-				});
-
-				if (!response.ok) {
-					return yield* new FetchError();
-				}
-
-				const json = yield* Effect.tryPromise({
-					try: () => response.json(),
-					catch: () => new JsonError(),
-				});
-
-				return yield* Schema.decodeUnknown(Pokemon)(json);
-			}),
-		};
-	}),
-	dependencies: [PokemonCollection.Default, PokeApiUrl.Default],
-}) {}
+const MainLayer = Layer.mergeAll(PokeApi.Default);
 
 const program = Effect.gen(function* () {
 	const pokeApi = yield* PokeApi;
 
 	return yield* pokeApi.getPokemon;
-});
+}).pipe(Effect.provide(MainLayer));
 
-const MainLayer = Layer.mergeAll(PokeApi.Default);
-
-const liveProgram = program.pipe(Effect.provide(MainLayer));
-
-const main = liveProgram.pipe(
+const main = program.pipe(
 	Effect.catchTags({
 		FetchError: () => Effect.succeed("Fetch error"),
 		JsonError: () => Effect.succeed("Json error"),
