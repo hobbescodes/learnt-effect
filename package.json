@@ -8,6 +8,7 @@
 	},
 	"devDependencies": {
 		"@types/bun": "^1.2.22",
+		"msw": "^2.11.3",
 		"typescript": "^5.9.2"
 	},
 	"dependencies": {
