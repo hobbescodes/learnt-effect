@@ -1,14 +1,16 @@
-import { Effect, Layer } from "effect";
+import { Effect, Layer, ManagedRuntime } from "effect";
 
 import { PokeApi } from "./services";
 
 const MainLayer = Layer.mergeAll(PokeApi.Default);
 
+const PokemonRuntime = ManagedRuntime.make(MainLayer);
+
 const program = Effect.gen(function* () {
 	const pokeApi = yield* PokeApi;
 
 	return yield* pokeApi.getPokemon;
-}).pipe(Effect.provide(MainLayer));
+});
 
 const main = program.pipe(
 	Effect.catchTags({
@@ -18,4 +20,4 @@ const main = program.pipe(
 	}),
 );
 
-Effect.runPromise(main).then(console.log);
+PokemonRuntime.runPromise(main).then(console.log);

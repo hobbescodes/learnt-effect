@@ -1,7 +1,7 @@
 import { Config, Context, Effect, Schema } from "effect";
 
-import { FetchError, JsonError } from "./errors";
-import { Pokemon } from "./schemas";
+import { FetchError, JsonError } from "../errors";
+import { Pokemon } from "../schemas";
 
 import type { ParseResult } from "effect";
 import type { ConfigError } from "effect/ConfigError";

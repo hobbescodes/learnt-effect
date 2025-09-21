@@ -1,7 +1,7 @@
 import { Config, Context, Effect, Layer, Schema } from "effect";
 
-import { FetchError, JsonError } from "./errors";
-import { Pokemon } from "./schemas";
+import { FetchError, JsonError } from "../errors";
+import { Pokemon } from "../schemas";
 
 // biome-ignore lint: who cares
 import type { Array } from "effect";

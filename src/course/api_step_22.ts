@@ -1,4 +1,4 @@
-import { Config, Effect, Layer, Schema } from "effect";
+import { Config, Effect, Layer, ManagedRuntime, Schema } from "effect";
 
 import { FetchError, JsonError } from "../errors";
 import { Pokemon } from "../schemas";
@@ -60,9 +60,12 @@ const program = Effect.gen(function* () {
 
 const MainLayer = Layer.mergeAll(PokeApi.Default);
 
-const liveProgram = program.pipe(Effect.provide(MainLayer));
+const PokemonRuntime = ManagedRuntime.make(MainLayer);
 
-const main = liveProgram.pipe(
+// Not needed anymore with managed runtime
+// const liveProgram = program.pipe(Effect.provide(MainLayer));
+
+const main = program.pipe(
 	Effect.catchTags({
 		FetchError: () => Effect.succeed("Fetch error"),
 		JsonError: () => Effect.succeed("Json error"),
@@ -70,4 +73,4 @@ const main = liveProgram.pipe(
 	}),
 );
 
-Effect.runPromise(main).then(console.log);
+PokemonRuntime.runPromise(main).then(console.log);

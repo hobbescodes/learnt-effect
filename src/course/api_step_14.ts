@@ -1,8 +1,8 @@
 import { Config, Effect, Schema } from "effect";
 
 // This step involves reorganization errors and schemas into their own files
-import { FetchError, JsonError } from "./errors";
-import { Pokemon } from "./schemas";
+import { FetchError, JsonError } from "../errors";
+import { Pokemon } from "../schemas";
 
 const getPokemon = Effect.gen(function* () {
 	const baseUrl = yield* Config.string("BASE_URL");
